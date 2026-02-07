@@ -1,0 +1,266 @@
+ou are a senior SaaS architect and backend engineer designing the stable core of a multi-tenant, private, scalable AI receptionist platform intended to be sold to multiple businesses under different brands (white-label / rebrandable).
+
+This is a production-oriented system. Prioritize security, tenant isolation, extensibility, observability, and correctness over speed hacks or demos.
+
+1️⃣ Product Definition
+
+Build the core backend + minimal frontend widget for an AI receptionist system with the following goals:
+
+Multi-tenant (many client businesses)
+
+Each tenant has isolated data, configuration, and limits
+
+Rebrandable / white-label friendly
+
+AI handles booking, FAQs, and intake
+
+Stripe plan-based feature enforcement
+
+Calendar-based appointment booking
+
+Safe defaults, strict validation, and auditability
+
+Do NOT include API keys or secrets — use environment variables everywhere.
+
+2️⃣ Tech Stack (Use Exactly This Unless Impossible)
+
+Backend: Node.js + TypeScript
+
+Framework: Express or Fastify
+
+Database: PostgreSQL (via Prisma ORM)
+
+Auth:
+
+Internal API auth via signed service tokens
+
+Tenant identification via subdomain or tenant ID header
+
+AI Layer: OpenAI-compatible interface (abstracted provider)
+
+Payments: Stripe (subscriptions + plan enforcement)
+
+Calendar: Google Calendar (abstracted)
+
+Frontend Widget:
+
+Embeddable JS widget (iframe or shadow DOM)
+
+Brand-agnostic styling system
+
+Config: dotenv + runtime validation (zod)
+
+Logging: structured logs + request IDs
+
+3️⃣ Core Architectural Rules (VERY IMPORTANT)
+
+Hard tenant isolation
+
+Every table includes tenant_id
+
+All queries must be tenant-scoped
+
+Reject requests without valid tenant context
+
+No business logic in controllers
+
+Service layer is pure and testable
+
+AI provider is swappable
+
+Calendar provider is swappable
+
+Stripe logic is centralized
+
+Feature access is plan-gated
+
+All date/time handling is timezone-safe
+
+No magic strings — use enums/constants
+
+4️⃣ Required Modules to Implement
+A. Tenant System
+
+Tenant model (business)
+
+Branding config (name, accent color, logo URL, voice style)
+
+Business hours & timezone
+
+Allowed domains / widget origins
+
+Plan tier (free / basic / pro / enterprise)
+
+B. User & Role System
+
+Admin users per tenant
+
+Roles: OWNER, ADMIN, VIEWER
+
+API access tokens (hashed)
+
+C. AI Receptionist Engine
+
+Conversation session model
+
+Message history persistence
+
+System prompt builder using tenant config
+
+Safe input sanitization
+
+Tool calling interface:
+
+checkAvailability
+
+bookAppointment
+
+collectContactInfo
+
+Guardrails against hallucinated bookings
+
+D. Appointment System
+
+Normalized appointment model
+
+Timezone normalization
+
+Conflict detection
+
+Calendar sync abstraction
+
+Plan-based booking limits
+
+E. Stripe Integration
+
+Subscription lifecycle handling
+
+Webhook verification
+
+Plan → feature map
+
+Usage enforcement hooks
+
+Graceful downgrade handling
+
+F. Embeddable Widget
+
+One-line embed script
+
+Tenant auto-resolution
+
+Theme via CSS variables
+
+Rate limiting & origin validation
+
+G. Security & Stability
+
+Input validation everywhere
+
+Central error handler
+
+Request correlation IDs
+
+Soft deletes
+
+Audit log table
+
+5️⃣ Database Schema Expectations
+
+Design Prisma models for:
+
+Tenant
+
+User
+
+ApiKey
+
+Conversation
+
+Message
+
+Appointment
+
+Subscription
+
+UsageRecord
+
+AuditLog
+
+All models must:
+
+Include tenant_id
+
+Include created_at, updated_at
+
+Be indexed correctly for scale
+
+6️⃣ Folder Structure (Enforced)
+/src
+  /modules
+    /tenants
+    /auth
+    /ai
+    /appointments
+    /billing
+    /calendar
+  /services
+  /providers
+  /middleware
+  /routes
+  /utils
+  /config
+  /db
+  /types
+
+7️⃣ What to Leave Blank (Explicitly)
+
+API keys
+
+OAuth credentials
+
+Stripe secrets
+
+OpenAI keys
+
+Google Calendar credentials
+
+Brand names/logos
+
+Domain names
+
+Use:
+
+OPENAI_API_KEY=
+STRIPE_SECRET_KEY=
+GOOGLE_CLIENT_ID=
+
+8️⃣ Output Requirements
+
+Generate complete runnable code
+
+Include .env.example
+
+Include Prisma schema
+
+Include minimal README explaining setup
+
+Code must compile without secrets
+
+No TODOs for architecture — only for secrets & branding
+
+Comment WHY things exist, not WHAT they do
+
+9️⃣ Quality Bar
+
+This should feel like:
+
+A serious SaaS foundation
+
+Something that could be sold to agencies
+
+Something that can survive feature expansion
+
+Something an investor wouldn’t laugh at
+
+Do not simplify this into a demo.
