@@ -1,38 +1,126 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  users, tenants, conversations, messages, appointments, subscriptions,
+  type User, type InsertUser, type Tenant, type InsertTenant,
+  type Conversation, type InsertConversation, type Message, type InsertMessage,
+  type Appointment, type InsertAppointment
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  // User & Auth
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // Tenant
+  getTenant(id: string): Promise<Tenant | undefined>;
+  getTenantBySlug(slug: string): Promise<Tenant | undefined>;
+  createTenant(tenant: InsertTenant): Promise<Tenant>;
+  updateTenant(id: string, updates: Partial<InsertTenant>): Promise<Tenant>;
+  
+  // Chat
+  getConversations(tenantId: string): Promise<Conversation[]>;
+  getConversation(id: number): Promise<Conversation | undefined>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  
+  getMessages(conversationId: number): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  
+  // Appointments
+  getAppointments(tenantId: string): Promise<Appointment[]>;
+  createAppointment(appointment: InsertAppointment): Promise<Appointment>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  // User
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+
+  // Tenant
+  async getTenant(id: string): Promise<Tenant | undefined> {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, id));
+    return tenant;
+  }
+
+  async getTenantBySlug(slug: string): Promise<Tenant | undefined> {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, slug));
+    return tenant;
+  }
+
+  async createTenant(insertTenant: InsertTenant): Promise<Tenant> {
+    const [tenant] = await db.insert(tenants).values(insertTenant).returning();
+    return tenant;
+  }
+  
+  async updateTenant(id: string, updates: Partial<InsertTenant>): Promise<Tenant> {
+    const [tenant] = await db.update(tenants)
+      .set(updates)
+      .where(eq(tenants.id, id))
+      .returning();
+    return tenant;
+  }
+
+  // Chat
+  async getConversations(tenantId: string): Promise<Conversation[]> {
+    return await db.select()
+      .from(conversations)
+      .where(eq(conversations.tenantId, tenantId))
+      .orderBy(desc(conversations.updatedAt));
+  }
+
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conv;
+  }
+
+  async createConversation(conv: InsertConversation): Promise<Conversation> {
+    const [newConv] = await db.insert(conversations).values(conv).returning();
+    return newConv;
+  }
+
+  async getMessages(conversationId: number): Promise<Message[]> {
+    return await db.select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
+  }
+
+  async createMessage(msg: InsertMessage): Promise<Message> {
+    const [newMsg] = await db.insert(messages).values(msg).returning();
+    
+    // Update conversation timestamp
+    await db.update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, msg.conversationId));
+      
+    return newMsg;
+  }
+  
+  // Appointments
+  async getAppointments(tenantId: string): Promise<Appointment[]> {
+    return await db.select()
+      .from(appointments)
+      .where(eq(appointments.tenantId, tenantId))
+      .orderBy(desc(appointments.startTime));
+  }
+
+  async createAppointment(appt: InsertAppointment): Promise<Appointment> {
+    const [newAppt] = await db.insert(appointments).values(appt).returning();
+    return newAppt;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
