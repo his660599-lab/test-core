@@ -32,6 +32,10 @@ async function comparePassword(stored: string, supplied: string): Promise<boolea
 function getTenantId(req: any) {
   return req.session?.tenantId; 
 }
+//check later
+ctx = { 
+  tenantId, userId, roles
+}
 
 export async function registerRoutes(
   httpServer: Server,
