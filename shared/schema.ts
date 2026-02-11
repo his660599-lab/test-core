@@ -27,7 +27,15 @@ export const users = pgTable("users", {
   name: text("name"),
   role: text("role", { enum: ["OWNER", "ADMIN", "VIEWER"] }).notNull().default("VIEWER"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+},
+
+  (table) => ({
+    tenantIdx: index("users_tenant_idx").on(table.tenantId),
+  })
+);
+
+
 
 // === CONVERSATIONS (AI Receptionist) ===
 export const conversations = pgTable("conversations", {
@@ -41,7 +49,12 @@ export const conversations = pgTable("conversations", {
   }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+},
+  (table) => ({
+    tenantIdx: index("conversations_tenant_idx").on(table.tenantId),
+  })
+
+);
 
 // === MESSAGES ===
 export const messages = pgTable("messages", {
@@ -51,7 +64,13 @@ export const messages = pgTable("messages", {
   role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+},
+  (table) => ({
+    tenantIdx: index("messages_tenant_idx").on(table.tenantId),
+    conversationIdx: index("messages_conversation_idx").on(table.conversationId),
+  })
+);
 
 // === APPOINTMENTS ===
 export const appointments = pgTable("appointments", {
@@ -63,7 +82,13 @@ export const appointments = pgTable("appointments", {
   endTime: timestamp("end_time").notNull(),
   status: text("status", { enum: ["scheduled", "cancelled", "completed"] }).notNull().default("scheduled"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+},
+  (table) => ({
+    tenantIdx: index("appointments_tenant_idx").on(table.tenantId),
+    conversationIdx: index("appointments_conversation_idx").on(table.conversationId),
+  })
+);
 
 // === SUBSCRIPTIONS (Stripe) ===
 export const subscriptions = pgTable("subscriptions", {
@@ -74,7 +99,11 @@ export const subscriptions = pgTable("subscriptions", {
   plan: text("plan", { enum: ["free", "basic", "pro", "enterprise"] }).notNull().default("free"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+},
+  (table) => ({
+    tenantIdx: index("subscriptions_tenant_idx").on(table.tenantId),
+  })
+);
 
 // === RELATIONS ===
 export const tenantsRelations = relations(tenants, ({ many, one }) => ({
@@ -127,3 +156,7 @@ export type Subscription = typeof subscriptions.$inferSelect;
 // Request Types
 export type LoginRequest = { email: string; password: string };
 export type RegisterRequest = { email: string; password: string; businessName: string; slug: string };
+function index(arg0: string) {
+  throw new Error("Function not implemented.");
+}
+

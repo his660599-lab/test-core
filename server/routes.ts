@@ -54,6 +54,8 @@ export async function registerRoutes(
     try {
       const input = api.auth.register.input.parse(req.body);
       
+      const storage = new storage.TenantStorage("req.context.tenantId"); // Temporary, will set tenantId after creation
+      const conv = await storage.getConversation(convId); // Test query to ensure tenant isolation works
       const existingUser = await storage.getUserByEmail(input.email);
       if (existingUser) {
         return res.status(400).json({ message: "Email already exists" });

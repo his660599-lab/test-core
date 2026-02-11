@@ -65,10 +65,10 @@ export class DatabaseStorage implements IStorage {
     return tenant;
   }
   
-  async updateTenant(id: string, updates: Partial<InsertTenant>): Promise<Tenant> {
+  async updateTenant(tenantId: string, updates: Partial<InsertTenant>): Promise<Tenant> {
     const [tenant] = await db.update(tenants)
       .set(updates)
-      .where(eq(tenants.id, id))
+      .where(eq(tenants.id, tenantId))
       .returning();
     return tenant;
   }
@@ -81,20 +81,30 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(conversations.updatedAt));
   }
 
-  async getConversation(id: number): Promise<Conversation | undefined> {
-    const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+  async getConversation(id: number, tenantId?: string): Promise<Conversation | undefined> {
+    const [conv] = await db.select().from(conversations).where(
+      and(
+        eq(conversations.id, id),
+        eq(conversations.tenantId, tenantId)
+      )
+    );
     return conv;
   }
 
-  async createConversation(conv: InsertConversation): Promise<Conversation> {
-    const [newConv] = await db.insert(conversations).values(conv).returning();
-    return newConv;
+  async createConversation(conv: Omit<InsertConversation, "tenantId"> & { tenantId: string }): Promise<Conversation> {
+    const [newConv] = await db.insert(conversations).values({ ...conv, tenantId: conv.tenantId }).returning();
+    return newConv;                                                                                       
   }
 
   async getMessages(conversationId: number): Promise<Message[]> {
     return await db.select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(messages.tenantId, tenants.id)
+        )
+      )
       .orderBy(messages.createdAt);
   }
 
@@ -104,7 +114,12 @@ export class DatabaseStorage implements IStorage {
     // Update conversation timestamp
     await db.update(conversations)
       .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, msg.conversationId));
+      .where(
+        and(
+          eq(conversations.id, msg.conversationId),
+          eq(conversations.tenantId, msg.tenantId)
+        )
+      );
       
     return newMsg;
   }
@@ -117,7 +132,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(appointments.startTime));
   }
 
-  async createAppointment(appt: InsertAppointment): Promise<Appointment> {
+  async createAppointment(appt: Omit<InsertAppointment, "tenantId"> & { tenantId: string }): Promise<Appointment> {
     const [newAppt] = await db.insert(appointments).values(appt).returning();
     return newAppt;
   }
